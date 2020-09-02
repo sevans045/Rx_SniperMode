@@ -10,6 +10,8 @@ simulated function FireAmmunition()
 
 defaultproperties
 {
+	CustomWeaponName = "Noobjet"
+
     Begin Object class=AnimNodeSequence Name=MeshSequenceA
     End Object
 
