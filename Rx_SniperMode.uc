@@ -1,4 +1,7 @@
-class Rx_SniperMode extends Rx_Mutator;
+class Rx_SniperMode extends Rx_Mutator
+config(SniperMode);
+
+var config bool bNoSpreadSnipers;
 
 enum TEAM
 {
@@ -26,11 +29,17 @@ struct MapData
 	var class<Rx_MapData> MapDataClass;
 };
 
+struct PT
+{
+	var byte Team;
+	var vector Loc;
+	var rotator Rot;
+};
+
 struct KillStreak
 {
 	var string StreakName;
 	var string ColourCode;
-	var SoundCue Sound;
 	var int KillsNeeded;
 };
 
@@ -142,7 +151,6 @@ function ResetKills(Controller Player, Controller Killer)
 
 event StreakEffect(Controller Player, KillStreak StreakStarted)
 {
-	local Rx_Controller C;
 	local string Message, PlayerName, KillStreakName;
 
 	if (Player != None)
@@ -152,12 +160,9 @@ event StreakEffect(Controller Player, KillStreak StreakStarted)
 
 	KillStreakName = "<font color='" $StreakStarted.ColourCode$"'>" $StreakStarted.StreakName$"</font>";
 
-	Message = PlayerName @ "is now on a" @ KillStreakName @ "killstreak!";
+	Message = PlayerName @ "is now on a" @ KillStreakName @ StreakStarted.KillsNeeded @ "killstreak!";
 
 	Announce(Message);
-
-	ForEach `WorldInfoObject.AllControllers(class'Rx_Controller', C)
-		C.ClientPlaySound(StreakStarted.Sound);
 }
 
 event StreakEnd(Controller Player, Controller Killer, KillStreak StreakEnded)
@@ -187,7 +192,7 @@ function int GetCurrentStreak(Controller Player)
 
 	P = PlayerDatas[PlayerDatas.Find('C', Player)];
 
-	if (P.CurrentKills < KillStreaks[0].KillsNeeded) return -1;
+	if (P.CurrentKills < KillStreaks[0].KillsNeeded) return INDEX_NONE;
 
 	if (KillStreaks.Find('KillsNeeded', P.CurrentKills) != INDEX_NONE)
 		return KillStreaks.Find('KillsNeeded', P.CurrentKills);
@@ -199,7 +204,8 @@ function PostBeginPlay()
 {
 	local SpawnPoint NewSpawn;
 	local Rx_SniperSpawnPoint TempSpawn;
-
+	local PT thisPT;
+	local SM_PT TempSpawn2;
 	local Barrier NewBarrier;
 
 	super.PostBeginPlay();
@@ -218,6 +224,24 @@ function PostBeginPlay()
 
 	ForEach CurrentMapData.default.Barriers(NewBarrier)
 		Spawn(class'Rx_Blocker',,,NewBarrier.Loc,NewBarrier.Rot);
+
+	ForEach CurrentMapData.default.PTs(thisPT)
+	{
+		TempSpawn2 = Spawn(class'SM_PT',,,thisPT.Loc,thisPT.Rot,,true);
+		TempSpawn2.TeamID = thisPT.Team;
+	}
+
+	`WorldInfoObject.Game.GameReplicationInfoClass = class'SM_GRI';
+
+	SetTimer(1.0f, true, 'SetSpread');
+}
+
+function SetSpread()
+{
+	if (`WorldInfoObject.GRI != None && SM_GRI(`WorldInfoObject.GRI) != None)
+	{
+		SM_GRI(`WorldInfoObject.GRI).bSpreadSniper = !bNoSpreadSnipers;
+	}
 }
 
 function NavigationPoint FindPlayerStart(Controller Player, optional byte InTeam, optional string incomingName)
@@ -234,50 +258,17 @@ function NavigationPoint FindPlayerStart(Controller Player, optional byte InTeam
 
 function bool CheckReplacement(Actor Other)
 {
-	local Rx_InventoryManager Inv;
-	local Rx_Pawn P;
-
-	if (Rx_InventoryManager(Other) != None)
-	{
-		Inv = Rx_InventoryManager(Other);
-
-		Inv.ClearAbilities();
-
-		Inv.PrimaryWeapons[0] = class'Rx_Weapon_SniperRifle_Modified';
-
-		if (Inv.default.PrimaryWeapons[0] == class'Rx_Weapon_RamjetRifle')
-			Inv.PrimaryWeapons[1] = class'Rx_Weapon_RamjetRifle_Modified';
-
-		Inv.SecondaryWeapons[0] = None;
-		Inv.SecondaryWeapons[1] = None;
-		Inv.SidearmWeapons[0] = None;
-		Inv.SidearmWeapons[1] = None;
-		Inv.ExplosiveWeapons[0] = None;
-		Inv.ExplosiveWeapons[1] = None;
-		Inv.AvailableAbilityWeapons[0] = None;
-
-		// Get the actual pawn from the Inventory Manager
-		P = Rx_Pawn(Other.Owner);
-
-		switch (P.GetTeamNum())
-		{
-			case TEAM_GDI:
-				Rx_PRI(P.Controller.PlayerReplicationInfo).SetChar(class'Rx_FamilyInfo_GDI_Deadeye', P);
-			break;
-			case TEAM_NOD:
-				Rx_PRI(P.Controller.PlayerReplicationInfo).SetChar(class'Rx_FamilyInfo_Nod_BlackHandSniper', P);
-			break;
-		}
-
-		if (P != None)
-			P.GivePassiveAbility(1, class'Rx_PassiveAbility_Sniper');
-	}
-
 	if (Rx_CratePickup(Other) != None)
 		return false;
 
 	if (Rx_TeamInfo(Other) != None)
+	{
 		Rx_Game(`WorldInfoObject.Game).HudClass = class'Rx_HUD_Sniper';
+		Rx_Game(`WorldInfoObject.Game).PurchaseSystemClass = class'SM_PS';
+		`WorldInfoObject.Game.DefaultPawnClass = class'SM_Pawn';
+		`WorldInfoObject.Game.PlayerControllerClass = class'SM_Controller';
+
+	}
 
 	return true;
 }
@@ -307,12 +298,12 @@ DefaultProperties
 	GDIColour = "#FFC600"
 	NeutralColour = "#00FF00"
 
-	KillStreaks(0)=(StreakName="Killing Spree",ColourCode="#25DA4B",Sound=SoundCue'RenX_SniperMode.Killing_Spree_Cue',KillsNeeded=3)
-	KillStreaks(1)=(StreakName="Dominating",ColourCode="#B33BC4",Sound=SoundCue'RenX_SniperMode.Dominating_Cue',KillsNeeded=4)
-	KillStreaks(2)=(StreakName="Mega",ColourCode="#E11EA6",Sound=SoundCue'RenX_SniperMode.MegaKill_Cue',KillsNeeded=5)
-	KillStreaks(3)=(StreakName="Unstoppable",ColourCode="#F67C09",Sound=SoundCue'RenX_SniperMode.Unstoppable_Cue',KillsNeeded=6)
-	KillStreaks(4)=(StreakName="Wicked Sick",ColourCode="#9FC33C",Sound=SoundCue'RenX_SniperMode.WhickedSick_Cue',KillsNeeded=7)
-	KillStreaks(5)=(StreakName="Monster",ColourCode="#8D4FB0",Sound=SoundCue'RenX_SniperMode.monster_kill_Cue',KillsNeeded=8)
-	KillStreaks(6)=(StreakName="GODLIKE",ColourCode="#FF0000",Sound=SoundCue'RenX_SniperMode.Godlike_Cue',KillsNeeded=9)
-	KillStreaks(7)=(StreakName="BEYOND GODLIKE!!!",ColourCode="#00E9FF",Sound=SoundCue'RenX_SniperMode.HolyShit_Cue',KillsNeeded=10)
+	KillStreaks(0)=(StreakName="Killing Spree",ColourCode="#25DA4B", KillsNeeded=3)
+	KillStreaks(1)=(StreakName="Dominating",ColourCode="#B33BC4", KillsNeeded=6)
+	KillStreaks(2)=(StreakName="Mega",ColourCode="#E11EA6", KillsNeeded=10)
+	KillStreaks(3)=(StreakName="Unstoppable",ColourCode="#F67C09", KillsNeeded=12)
+	KillStreaks(4)=(StreakName="Wicked Sick",ColourCode="#9FC33C", KillsNeeded=14)
+	KillStreaks(5)=(StreakName="Monster",ColourCode="#8D4FB0", KillsNeeded=16)
+	KillStreaks(6)=(StreakName="GODLIKE",ColourCode="#FF0000", KillsNeeded=20)
+	KillStreaks(7)=(StreakName="BEYOND GODLIKE!!!",ColourCode="#00E9FF", KillsNeeded=21)
 }

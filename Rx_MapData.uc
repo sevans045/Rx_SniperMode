@@ -16,6 +16,7 @@ struct SpawnPoint
 
 var const array<Barrier> Barriers;
 var const array<SpawnPoint> SpawnPoints;
+var const array<PT> PTs;
 
 DefaultProperties
 {

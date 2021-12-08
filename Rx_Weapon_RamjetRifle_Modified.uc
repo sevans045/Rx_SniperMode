@@ -46,19 +46,19 @@ defaultproperties
 	FireOffset=(X=0,Y=0,Z=-3)	//(X=0,Y=7,Z=-5)
 	
 //-------------- Recoil
-	RecoilDelay = 0.00
-	MinRecoil = 1.0
-	MaxRecoil = 1.0
-	MaxTotalRecoil = 1.0
-	RecoilYawModifier = 0.0 // will be a random value between 0 and this value for every shot
-	RecoilInterpSpeed = 0.0
-	RecoilDeclinePct = 0.0
-	RecoilDeclineSpeed = 10.0
-	MaxSpread = 0.0
-	RecoilSpreadIncreasePerShot = 0.0
-	RecoilSpreadDeclineSpeed = 0.1
-	RecoilSpreadDecreaseDelay = 0.3
-	RecoilSpreadCrosshairScaling = 4000	// 2500
+	//RecoilDelay = 0.00
+	//MinRecoil = 1.0
+	//MaxRecoil = 1.0
+	//MaxTotalRecoil = 1.0
+	//RecoilYawModifier = 0.0 // will be a random value between 0 and this value for every shot
+	//RecoilInterpSpeed = 0.0
+	//RecoilDeclinePct = 0.0
+	//RecoilDeclineSpeed = 10.0
+	//MaxSpread = 0.0
+	//RecoilSpreadIncreasePerShot = 0.0
+	//RecoilSpreadDeclineSpeed = 0.1
+	//RecoilSpreadDecreaseDelay = 0.3
+	//RecoilSpreadCrosshairScaling = 4000	// 2500
 
     bAutoFire = false
 	bInstantHit=true

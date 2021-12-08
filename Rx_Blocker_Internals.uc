@@ -1,5 +1,7 @@
 class Rx_Blocker_Internals extends Rx_Building_Team_Internals;
 
+simulated function bool GetIsValidLocalTarget(Controller PC) {return false;}
+
 DefaultProperties
 {
 	Begin Object Name=BuildingSkeletalMeshComponent
